@@ -881,8 +881,10 @@ class SalonBot:
         print("   /today - сегодняшнее расписание") 
         print("   /tomorrow - завтрашнее расписание")
         print("   Или напишите: 'расписание', 'график', 'записи'")
-        self.application.run_polling()
-
+        self.application.run_polling(
+       allowed_updates=Update.ALL_TYPES,
+       drop_pending_updates=True
+   )
 def main():
     try:
         print("🎯 Инициализация...")
@@ -895,4 +897,5 @@ def main():
 
 if __name__ == '__main__':
     print("🚀 ЗАПУСК БОТА...")
+
     main()
