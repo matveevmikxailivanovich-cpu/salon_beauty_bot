@@ -873,7 +873,7 @@ class SalonBot:
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
     
     def run(self):
-    logger.info("🤖 БОТ ЗАПУЩЕН!")
+    logger.info("🤖 БОТ ЗАПУЩЕН!")  ✅ 4 пробела отступ!
     logger.info("📱 Проверьте в Telegram")
     logger.info("🔄 Для остановки: Ctrl+C")
     
@@ -901,4 +901,5 @@ if __name__ == '__main__':
     print("🚀 ЗАПУСК БОТА...")
 
     main()
+
 
