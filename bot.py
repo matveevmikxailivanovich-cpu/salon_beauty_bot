@@ -873,18 +873,20 @@ class SalonBot:
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
     
     def run(self):
-        print("🤖 БОТ ЗАПУЩЕН!")
-        print("📱 Проверьте в Telegram")
-        print("🔄 Для остановки: Ctrl+C")
-        print("🔧 Админ-команды:")
-        print("   /schedule - расписание на дату")
-        print("   /today - сегодняшнее расписание") 
-        print("   /tomorrow - завтрашнее расписание")
-        print("   Или напишите: 'расписание', 'график', 'записи'")
-        self.application.run_polling(
-       allowed_updates=Update.ALL_TYPES,
-       drop_pending_updates=True
-   )
+    logger.info("🤖 БОТ ЗАПУЩЕН!")
+    logger.info("📱 Проверьте в Telegram")
+    logger.info("🔄 Для остановки: Ctrl+C")
+    
+    # Запуск бота
+    self.application.run_polling(
+        poll_interval=0.0,
+        timeout=10,
+        bootstrap_retries=-1,
+        read_timeout=2,
+        write_timeout=None,
+        connect_timeout=None,
+        pool_timeout=None,
+    )
 def main():
     try:
         print("🎯 Инициализация...")
@@ -899,3 +901,4 @@ if __name__ == '__main__':
     print("🚀 ЗАПУСК БОТА...")
 
     main()
+
