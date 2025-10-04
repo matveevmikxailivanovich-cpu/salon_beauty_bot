@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-TELEGRAM-БОТ САЛОНА КРАСОТЫ ДЛЯ RENDER v2.0
-Улучшенная версия с защитой от конфликтов и webhook поддержкой
+TELEGRAM-БОТ САЛОНА КРАСОТЫ ДЛЯ RENDER v2.1 FIXED
+Исправленная версия без синтаксических ошибок
 """
 
 import asyncio
@@ -34,11 +34,11 @@ logger = logging.getLogger(__name__)
 
 # Переменные окружения
 BOT_TOKEN = os.getenv('BOT_TOKEN', "8215198856:AAFaeNBZnrKig1tU0VR74DoCTHdrXsRKV1U")
-WEBHOOK_URL = os.getenv('WEBHOOK_URL', None)  # Для webhook режима
-PORT = int(os.getenv('PORT', 8443))  # Порт для webhook
+WEBHOOK_URL = os.getenv('WEBHOOK_URL', None)
+PORT = int(os.getenv('PORT', 8443))
 USE_WEBHOOK = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
 
-print("🤖 TELEGRAM-БОТ САЛОНА КРАСОТЫ v2.0")
+print("🤖 TELEGRAM-БОТ САЛОНА КРАСОТЫ v2.1")
 print(f"🔑 Токен: {BOT_TOKEN[:20]}...")
 print(f"🌐 Webhook: {'Включен' if USE_WEBHOOK else 'Отключен'}")
 
@@ -371,7 +371,6 @@ class SalonBot:
             except:
                 pass
     
-    # Остальные методы остаются такими же, как в оригинальной версии
     async def show_services(self, query):
         text = f"📋 **Услуги {SALON_INFO['name']}**\n\n"
         
@@ -385,6 +384,168 @@ class SalonBot:
         text += f"📍 {SALON_INFO['address']}"
         
         keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    
+    async def show_user_bookings(self, query):
+        user_id = query.from_user.id
+        appointments = db.get_user_appointments(user_id)
+        
+        if appointments:
+            text = "📱 **Ваши записи:**\n\n"
+            for apt in appointments:
+                service_name = SERVICES[apt['service_type']]['name']
+                date_obj = datetime.strptime(apt['date'], "%Y-%m-%d")
+                formatted_date = date_obj.strftime("%d.%m.%Y")
+                
+                text += f"• {service_name}\n"
+                text += f"📅 {formatted_date} в {apt['time']}\n"
+                text += f"👩‍💻 {apt['master']}\n\n"
+            
+            text += f"📞 Для изменения: {SALON_INFO['phone']}"
+        else:
+            text = "📱 У вас нет активных записей\n\n📅 Хотите записаться?"
+        
+        keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    
+    async def back_to_main_menu(self, query):
+        user_id = query.from_user.id
+        user_states[user_id] = UserState.MAIN_MENU
+        
+        text = f"🏠 **Главное меню {SALON_INFO['name']}**\n\nВыберите действие:"
+        
+        keyboard = [
+            [InlineKeyboardButton("📅 Записаться", callback_data="book")],
+            [InlineKeyboardButton("📋 Услуги и цены", callback_data="services")],
+            [InlineKeyboardButton("👩‍💻 Наши мастера", callback_data="masters")],
+            [InlineKeyboardButton("🎯 Акции", callback_data="promotions")],
+            [InlineKeyboardButton("📱 Мои записи", callback_data="my_bookings")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    
+    async def run_webhook(self):
+        """Запуск в режиме webhook"""
+        try:
+            if not WEBHOOK_URL:
+                raise ValueError("WEBHOOK_URL не установлен для webhook режима")
+            
+            logger.info(f"🌐 Запуск в режиме webhook: {WEBHOOK_URL}")
+            
+            # Настройка webhook
+            await self.application.initialize()
+            await self.application.start()
+            await self.application.bot.set_webhook(url=WEBHOOK_URL)
+            
+            # Запуск webhook сервера
+            await self.application.run_webhook(
+                listen="0.0.0.0",
+                port=PORT,
+                url_path="",
+                webhook_url=WEBHOOK_URL
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка запуска webhook: {e}")
+            raise
+    
+    async def run_polling(self):
+        """Запуск в режиме polling"""
+        try:
+            logger.info("🔄 Запуск в режиме polling")
+            
+            await self.application.initialize()
+            await self.application.start()
+            await self.application.updater.start_polling(
+                drop_pending_updates=True,  # Пропускаем старые обновления
+                allowed_updates=['message', 'callback_query']
+            )
+            
+            # Мониторинг работы
+            while not shutdown_event.is_set():
+                await asyncio.sleep(60)
+                logger.info("🔄 Бот работает...")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка запуска polling: {e}")
+            raise
+        finally:
+            await self.application.stop()
+            await self.application.shutdown()
+    
+    async def run(self):
+        """Основной метод запуска"""
+        try:
+            logger.info("🤖 БОТ ЗАПУЩЕН НА RENDER!")
+            logger.info("📱 Проверьте в Telegram")
+            logger.info(f"🌐 Режим: {'Webhook' if USE_WEBHOOK else 'Polling'}")
+            
+            if USE_WEBHOOK:
+                await self.run_webhook()
+            else:
+                await self.run_polling()
+                
+        except Exception as e:
+            logger.error(f"❌ Критическая ошибка: {e}")
+            raise
+
+def signal_handler(signum, frame):
+    """Обработчик сигналов для graceful shutdown"""
+    logger.info(f"📶 Получен сигнал {signum}, завершение работы...")
+    shutdown_event.set()
+
+async def main():
+    """Главная функция"""
+    try:
+        # Настройка обработчиков сигналов
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+        
+        logger.info("🎯 Инициализация Telegram-бота для Render...")
+        logger.info(f"🐍 Python версия: {sys.version}")
+        logger.info(f"📂 Рабочая директория: {os.getcwd()}")
+        logger.info(f"💾 Путь к БД: {os.getenv('DATABASE_PATH', '/tmp/salon_bot.db')}")
+        
+        # Проверка критических переменных
+        if not BOT_TOKEN or BOT_TOKEN == "YOUR_BOT_TOKEN":
+            raise ValueError("❌ BOT_TOKEN не установлен или имеет значение по умолчанию")
+        
+        # Создание и запуск бота
+        bot = SalonBot()
+        await bot.run()
+        
+    except KeyboardInterrupt:
+        logger.info("⏹️ Бот остановлен пользователем")
+    except Exception as e:
+        logger.error(f"❌ Критическая ошибка main(): {e}")
+        sys.exit(1)
+    finally:
+        logger.info("🏁 Завершение работы бота")
+
+if __name__ == '__main__':
+    logger.info("🚀 СТАРТ TELEGRAM-БОТА НА RENDER...")
+    
+    # Проверка зависимостей при запуске
+    try:
+        import telegram
+        logger.info(f"✅ python-telegram-bot версия: {telegram.__version__}")
+    except ImportError as e:
+        logger.error(f"❌ Ошибка импорта telegram: {e}")
+        sys.exit(1)
+    
+    # Запуск основной функции
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("⏹️ Принудительная остановка")
+    except Exception as e:
+        logger.error(f"❌ Неожиданная ошибка: {e}")
+        sys.exit(1)", callback_data="back_to_menu")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
@@ -419,9 +580,202 @@ class SalonBot:
             text += f"• {service}\n"
         text += f"\n⏱ {service_info['duration']} мин\n\n"
         
-        # Генерация дат
+        # Генерация дат (ИСПРАВЛЕНО!)
         available_dates = []
         for i in range(1, 8):
             date = datetime.now() + timedelta(days=i)
             if date.weekday() < 6:  # Пн-Сб
-                available_dates.append(
+                available_dates.append(date)
+        
+        if available_dates:
+            text += "📅 **Выберите дату:**"
+            keyboard = []
+            for date in available_dates:
+                date_str = date.strftime("%Y-%m-%d")
+                date_display = date.strftime("%d.%m (%a)")
+                days = {'Mon': 'Пн', 'Tue': 'Вт', 'Wed': 'Ср', 'Thu': 'Чт', 'Fri': 'Пт', 'Sat': 'Сб'}
+                for eng, rus in days.items():
+                    date_display = date_display.replace(eng, rus)
+                keyboard.append([InlineKeyboardButton(date_display, callback_data=f"date_{date_str}")])
+            
+            keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data="book")])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+        else:
+            text += "❌ **Нет доступных дат**"
+            keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    
+    async def select_date(self, query, callback_data):
+        user_id = query.from_user.id
+        selected_date = callback_data.replace("date_", "")
+        user_data[user_id]['date'] = selected_date
+        
+        service_type = user_data[user_id]['service_type']
+        masters = MASTERS[service_type]
+        
+        date_obj = datetime.strptime(selected_date, "%Y-%m-%d")
+        formatted_date = date_obj.strftime("%d.%m.%Y")
+        
+        text = f"📅 **{formatted_date}**\n⏰ **Выберите время:**"
+        
+        keyboard = []
+        for hour in WORK_HOURS:
+            time_str = f"{hour:02d}:00"
+            available = any(db.is_time_available(master, selected_date, time_str) for master in masters)
+            if available:
+                keyboard.append([InlineKeyboardButton(time_str, callback_data=f"time_{time_str}")])
+        
+        if keyboard:
+            keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data=f"service_{service_type}")])
+        else:
+            text += "\n❌ **Нет свободного времени**"
+            keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data=f"service_{service_type}")]]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    
+    async def select_time(self, query, callback_data):
+        user_id = query.from_user.id
+        selected_time = callback_data.replace("time_", "")
+        user_data[user_id]['time'] = selected_time
+        
+        if not db.is_user_registered(user_id):
+            user_states[user_id] = UserState.AWAITING_NAME
+            
+            text = (
+                f"📝 **Для записи нужна регистрация**\n\n"
+                f"👤 Введите ваше имя:"
+            )
+            await query.edit_message_text(text, parse_mode='Markdown')
+        else:
+            await self.confirm_booking(query)
+    
+    async def handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id
+        text = update.message.text
+        
+        if user_id not in user_states:
+            await self.start_command(update, context)
+            return
+        
+        state = user_states[user_id]
+        
+        try:
+            if state == UserState.AWAITING_NAME:
+                user_data[user_id]['name'] = text.strip()
+                user_states[user_id] = UserState.AWAITING_PHONE
+                
+                await update.message.reply_text(
+                    f"👍 Приятно познакомиться, {text}!\n📞 Введите номер телефона:"
+                )
+            
+            elif state == UserState.AWAITING_PHONE:
+                user_data[user_id]['phone'] = text.strip()
+                
+                db.register_user(user_id, user_data[user_id]['name'], user_data[user_id]['phone'])
+                await self.complete_booking(update)
+            
+            else:
+                # Неожиданное текстовое сообщение
+                await update.message.reply_text(
+                    "❓ Используйте кнопки меню или команду /start",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")
+                    ]])
+                )
+        except Exception as e:
+            logger.error(f"❌ Ошибка обработки текста от {user_id}: {e}")
+            await update.message.reply_text("😔 Произошла ошибка. Попробуйте /start")
+    
+    async def confirm_booking(self, query):
+        user_id = query.from_user.id
+        await self._finalize_booking(user_id, query)
+    
+    async def complete_booking(self, update):
+        user_id = update.effective_user.id
+        await self._finalize_booking(user_id, update)
+        user_states[user_id] = UserState.MAIN_MENU
+    
+    async def _finalize_booking(self, user_id, update_or_query):
+        try:
+            service_type = user_data[user_id]['service_type']
+            date = user_data[user_id]['date']
+            time = user_data[user_id]['time']
+            
+            masters = MASTERS[service_type]
+            available_master = None
+            for master in masters:
+                if db.is_time_available(master, date, time):
+                    available_master = master
+                    break
+            
+            if available_master:
+                appointment_id = db.create_appointment(user_id, service_type, available_master, date, time)
+                
+                date_obj = datetime.strptime(date, "%Y-%m-%d")
+                formatted_date = date_obj.strftime("%d.%m.%Y")
+                
+                text = (
+                    f"🎉 **ЗАПИСЬ ПОДТВЕРЖДЕНА!**\n\n"
+                    f"📅 Дата: {formatted_date}\n"
+                    f"⏰ Время: {time}\n"
+                    f"👩‍💻 Мастер: {available_master}\n"
+                    f"💅 Услуга: {SERVICES[service_type]['name']}\n\n"
+                    f"📍 {SALON_INFO['address']}\n"
+                    f"📞 {SALON_INFO['phone']}\n\n"
+                    f"✨ Ждем вас!"
+                )
+                
+                if appointment_id:
+                    logger.info(f"✅ Успешная запись #{appointment_id} для пользователя {user_id}")
+            else:
+                text = "😔 К сожалению, время уже занято. Выберите другое время."
+                logger.warning(f"⚠️ Время {date} {time} недоступно для пользователя {user_id}")
+            
+            keyboard = [[InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            if hasattr(update_or_query, 'edit_message_text'):
+                await update_or_query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+            else:
+                await update_or_query.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка финализации записи для {user_id}: {e}")
+            error_text = "😔 Произошла ошибка при создании записи. Попробуйте еще раз."
+            keyboard = [[InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            if hasattr(update_or_query, 'edit_message_text'):
+                await update_or_query.edit_message_text(error_text, reply_markup=reply_markup)
+            else:
+                await update_or_query.message.reply_text(error_text, reply_markup=reply_markup)
+    
+    async def show_masters(self, query):
+        text = f"👩‍💻 **Мастера {SALON_INFO['name']}:**\n\n"
+        
+        for service_type, masters in MASTERS.items():
+            service_name = SERVICES[service_type]['name']
+            text += f"**{service_name}:**\n"
+            for master in masters:
+                text += f"• {master}\n"
+            text += "\n"
+        
+        keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    
+    async def show_promotions(self, query):
+        text = (
+            f"🎯 **Акции {SALON_INFO['name']}:**\n\n"
+            f"🌟 Скидка 20% на первое посещение\n"
+            f"💅 Маникюр + педикюр = скидка 15%\n"
+            f"👯‍♀️ Приведи подругу - скидка 10%\n"
+            f"🎂 В день рождения - скидка 25%\n\n"
+            f"📞 Подробности: {SALON_INFO['phone']}"
+        )
+        
+        keyboard = [[InlineKeyboardButton("🔙 Назад
