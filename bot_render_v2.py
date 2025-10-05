@@ -291,8 +291,8 @@ class SalonBot:
             self.app.run_webhook(
                 listen="0.0.0.0",
                 port=PORT,
-                url_path="",
-                webhook_url=WEBHOOK_URL
+                url_path="webhook",
+                webhook_url=f"{WEBHOOK_URL}/webhook"
             )
         else:
             logger.info("🔄 Polling mode")
