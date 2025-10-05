@@ -322,25 +322,25 @@ class SalonBot:
             await uq.message.reply_text(t, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
     
     async def run(self):
-        logger.info("🤖 STARTING...")
-        
-        if USE_WEBHOOK:
-            if not WEBHOOK_URL:
-                raise ValueError("No WEBHOOK_URL")
-            await self.app.initialize()
-            await self.app.start()
-            await self.app.bot.set_webhook(url=WEBHOOK_URL)
-            await self.app.run_webhook(listen="0.0.0.0", port=PORT, url_path="", webhook_url=WEBHOOK_URL)
-        else:
-            await self.app.initialize()
-            await self.app.start()
-            await self.app.updater.start_polling(drop_pending_updates=True, allowed_updates=['message', 'callback_query'])
-            
-            while not shutdown_event.is_set():
-                await asyncio.sleep(60)
-            
-            await self.app.stop()
-            await self.app.shutdown()
+    logger.info("🤖 STARTING...")
+    
+    if USE_WEBHOOK:
+        if not WEBHOOK_URL:
+            raise ValueError("No WEBHOOK_URL")
+        logger.info(f"🌐 Webhook: {WEBHOOK_URL}")
+        await self.app.initialize()
+        await self.app.start()
+        await self.app.bot.set_webhook(url=WEBHOOK_URL)
+        await self.app.run_webhook(listen="0.0.0.0", port=PORT, url_path="", webhook_url=WEBHOOK_URL)
+    else:
+        logger.info("🔄 Polling mode")
+        # Используем run_polling вместо ручного управления
+        await self.app.run_polling(
+            poll_interval=1.0,
+            timeout=10,
+            drop_pending_updates=True,
+            allowed_updates=['message', 'callback_query']
+        )
 
 def sig_handler(signum, frame):
     logger.info(f"📶 Signal {signum}")
@@ -373,3 +373,4 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"❌ {e}")
         sys.exit(1)
+
