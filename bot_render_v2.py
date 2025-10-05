@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-TELEGRAM-БОТ САЛОНА КРАСОТЫ ДЛЯ RENDER v2.2
-Полностью рабочая версия
-"""
+"""TELEGRAM-БОТ САЛОНА КРАСОТЫ v2.3"""
 
 import asyncio
 import logging
@@ -21,11 +18,7 @@ except ImportError:
     print("❌ Install: pip install python-telegram-bot==20.7")
     sys.exit(1)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv('BOT_TOKEN', "8215198856:AAFaeNBZnrKig1tU0VR74DoCTHdrXsRKV1U")
@@ -33,7 +26,7 @@ WEBHOOK_URL = os.getenv('WEBHOOK_URL', None)
 PORT = int(os.getenv('PORT', 8443))
 USE_WEBHOOK = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
 
-print(f"🤖 BOT v2.2 | Mode: {'Webhook' if USE_WEBHOOK else 'Polling'}")
+print(f"🤖 BOT v2.3 | Mode: {'Webhook' if USE_WEBHOOK else 'Polling'}")
 
 shutdown_event = asyncio.Event()
 
@@ -49,12 +42,7 @@ SERVICES = {
     "makeup": {"name": "💄 Макияж", "services": ["Брови - 8000₽", "Губы - 12000₽"], "duration": 150}
 }
 
-MASTERS = {
-    "nails": ["Анна Иванова", "Мария Петрова"],
-    "hair": ["Елена Сидорова", "Ольга Козлова"],
-    "makeup": ["Светлана Николаева"]
-}
-
+MASTERS = {"nails": ["Анна Иванова", "Мария Петрова"], "hair": ["Елена Сидорова", "Ольга Козлова"], "makeup": ["Светлана Николаева"]}
 WORK_HOURS = list(range(9, 19))
 SALON_INFO = {"name": "Салон 'Элеганс'", "phone": "+7 (999) 123-45-67", "address": "ул. Красоты, 10"}
 
@@ -144,19 +132,12 @@ class SalonBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         user_states[user_id] = UserState.MAIN_MENU
-        
-        kb = [
-            [InlineKeyboardButton("📅 Записаться", callback_data="book")],
-            [InlineKeyboardButton("📋 Услуги", callback_data="services")],
-            [InlineKeyboardButton("👩‍💻 Мастера", callback_data="masters")],
-            [InlineKeyboardButton("📱 Мои записи", callback_data="my_bookings")]
-        ]
+        kb = [[InlineKeyboardButton("📅 Записаться", callback_data="book")], [InlineKeyboardButton("📋 Услуги", callback_data="services")], [InlineKeyboardButton("👩‍💻 Мастера", callback_data="masters")], [InlineKeyboardButton("📱 Мои записи", callback_data="my_bookings")]]
         await update.message.reply_text(f"👋 {SALON_INFO['name']}\n📞 {SALON_INFO['phone']}", reply_markup=InlineKeyboardMarkup(kb))
     
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         q = update.callback_query
         await q.answer()
-        
         try:
             if q.data == "services":
                 await self.show_services(q)
@@ -202,22 +183,12 @@ class SalonBot:
     
     async def back_menu(self, q):
         user_states[q.from_user.id] = UserState.MAIN_MENU
-        kb = [
-            [InlineKeyboardButton("📅 Записаться", callback_data="book")],
-            [InlineKeyboardButton("📋 Услуги", callback_data="services")],
-            [InlineKeyboardButton("👩‍💻 Мастера", callback_data="masters")],
-            [InlineKeyboardButton("📱 Мои записи", callback_data="my_bookings")]
-        ]
+        kb = [[InlineKeyboardButton("📅 Записаться", callback_data="book")], [InlineKeyboardButton("📋 Услуги", callback_data="services")], [InlineKeyboardButton("👩‍💻 Мастера", callback_data="masters")], [InlineKeyboardButton("📱 Мои записи", callback_data="my_bookings")]]
         await q.edit_message_text("🏠 **Меню**", reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
     
     async def start_booking(self, q):
         user_states[q.from_user.id] = UserState.SELECTING_SERVICE
-        kb = [
-            [InlineKeyboardButton("💅 Ногти", callback_data="service_nails")],
-            [InlineKeyboardButton("💇‍♀️ Волосы", callback_data="service_hair")],
-            [InlineKeyboardButton("💄 Макияж", callback_data="service_makeup")],
-            [InlineKeyboardButton("🔙", callback_data="back")]
-        ]
+        kb = [[InlineKeyboardButton("💅 Ногти", callback_data="service_nails")], [InlineKeyboardButton("💇‍♀️ Волосы", callback_data="service_hair")], [InlineKeyboardButton("💄 Макияж", callback_data="service_makeup")], [InlineKeyboardButton("🔙", callback_data="back")]]
         await q.edit_message_text("📅 **Услуга:**", reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
     
     async def select_service(self, q, data):
@@ -225,10 +196,8 @@ class SalonBot:
         if q.from_user.id not in user_data:
             user_data[q.from_user.id] = {}
         user_data[q.from_user.id]['service_type'] = st
-        
         s = SERVICES[st]
         t = f"**{s['name']}**\n\n" + "\n".join(f"• {x}" for x in s['services']) + f"\n\n⏱ {s['duration']} мин\n\n📅 **Дата:**"
-        
         kb = []
         for i in range(1, 8):
             d = datetime.now() + timedelta(days=i)
@@ -242,26 +211,21 @@ class SalonBot:
     async def select_date(self, q, data):
         date = data.replace("date_", "")
         user_data[q.from_user.id]['date'] = date
-        
         st = user_data[q.from_user.id]['service_type']
         ms = MASTERS[st]
-        
         d = datetime.strptime(date, "%Y-%m-%d").strftime("%d.%m")
         t = f"📅 **{d}**\n⏰ **Время:**"
-        
         kb = []
         for h in WORK_HOURS:
             tm = f"{h:02d}:00"
             if any(db.is_time_available(m, date, tm) for m in ms):
                 kb.append([InlineKeyboardButton(tm, callback_data=f"time_{tm}")])
-        
         kb.append([InlineKeyboardButton("🔙", callback_data=f"service_{st}")])
         await q.edit_message_text(t, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
     
     async def select_time(self, q, data):
         tm = data.replace("time_", "")
         user_data[q.from_user.id]['time'] = tm
-        
         if not db.is_user_registered(q.from_user.id):
             user_states[q.from_user.id] = UserState.AWAITING_NAME
             await q.edit_message_text("📝 **Регистрация**\n\n👤 Введите имя:", parse_mode='Markdown')
@@ -271,18 +235,14 @@ class SalonBot:
     async def handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         uid = update.effective_user.id
         txt = update.message.text
-        
         if uid not in user_states:
             await self.start_command(update, context)
             return
-        
         st = user_states[uid]
-        
         if st == UserState.AWAITING_NAME:
             user_data[uid]['name'] = txt.strip()
             user_states[uid] = UserState.AWAITING_PHONE
             await update.message.reply_text(f"👍 {txt}!\n📞 Введите телефон:")
-        
         elif st == UserState.AWAITING_PHONE:
             user_data[uid]['phone'] = txt.strip()
             db.register_user(uid, user_data[uid]['name'], user_data[uid]['phone'])
@@ -299,48 +259,37 @@ class SalonBot:
         st = user_data[uid]['service_type']
         dt = user_data[uid]['date']
         tm = user_data[uid]['time']
-        
         ms = MASTERS[st]
         m = None
         for x in ms:
             if db.is_time_available(x, dt, tm):
                 m = x
                 break
-        
         if m:
             db.create_appointment(uid, st, m, dt, tm)
             d = datetime.strptime(dt, "%Y-%m-%d").strftime("%d.%m")
             t = f"🎉 **ГОТОВО!**\n\n📅 {d} в {tm}\n👩‍💻 {m}\n💅 {SERVICES[st]['name']}\n\n📍 {SALON_INFO['address']}\n📞 {SALON_INFO['phone']}"
         else:
             t = "😔 Время занято"
-        
         kb = [[InlineKeyboardButton("🏠", callback_data="back")]]
-        
         if hasattr(uq, 'edit_message_text'):
             await uq.edit_message_text(t, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
         else:
             await uq.message.reply_text(t, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
     
     async def run(self):
-    logger.info("🤖 STARTING...")
-    
-    if USE_WEBHOOK:
-        if not WEBHOOK_URL:
-            raise ValueError("No WEBHOOK_URL")
-        logger.info(f"🌐 Webhook: {WEBHOOK_URL}")
-        await self.app.initialize()
-        await self.app.start()
-        await self.app.bot.set_webhook(url=WEBHOOK_URL)
-        await self.app.run_webhook(listen="0.0.0.0", port=PORT, url_path="", webhook_url=WEBHOOK_URL)
-    else:
-        logger.info("🔄 Polling mode")
-        # Используем run_polling вместо ручного управления
-        await self.app.run_polling(
-            poll_interval=1.0,
-            timeout=10,
-            drop_pending_updates=True,
-            allowed_updates=['message', 'callback_query']
-        )
+        logger.info("🤖 STARTING...")
+        if USE_WEBHOOK:
+            if not WEBHOOK_URL:
+                raise ValueError("No WEBHOOK_URL")
+            logger.info(f"🌐 Webhook: {WEBHOOK_URL}")
+            await self.app.initialize()
+            await self.app.start()
+            await self.app.bot.set_webhook(url=WEBHOOK_URL)
+            await self.app.run_webhook(listen="0.0.0.0", port=PORT, url_path="", webhook_url=WEBHOOK_URL)
+        else:
+            logger.info("🔄 Polling mode")
+            await self.app.run_polling(poll_interval=1.0, timeout=10, drop_pending_updates=True, allowed_updates=['message', 'callback_query'])
 
 def sig_handler(signum, frame):
     logger.info(f"📶 Signal {signum}")
@@ -349,28 +298,22 @@ def sig_handler(signum, frame):
 async def main():
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
-    
     logger.info("🎯 Init...")
-    
     if not BOT_TOKEN:
         raise ValueError("No BOT_TOKEN")
-    
     bot = SalonBot()
     await bot.run()
 
 if __name__ == '__main__':
     logger.info("🚀 START")
-    
     try:
         import telegram
         logger.info(f"✅ telegram {telegram.__version__}")
     except ImportError:
         logger.error("❌ No telegram lib")
         sys.exit(1)
-    
     try:
         asyncio.run(main())
     except Exception as e:
         logger.error(f"❌ {e}")
         sys.exit(1)
-
