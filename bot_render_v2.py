@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
-"""TELEGRAM-БОТ САЛОНА КРАСОТЫ v2.4 - Стабильная версия для python-telegram-bot==20.3"""
-
-import asyncio
-import logging
-import sys
-import os
+"""TELEGRAM БОТ v2.7 - FINAL"""
+import asyncio, logging, sys, os
 from datetime import datetime, timedelta
 from typing import Dict, List
 import sqlite3
@@ -14,7 +10,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
     print("✅ telegram OK")
 except ImportError:
-    print("❌ pip install python-telegram-bot==20.3")
+    print("❌ pip install python-telegram-bot[webhooks]==20.3")
     sys.exit(1)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
@@ -25,9 +21,10 @@ WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 PORT = int(os.getenv('PORT', '10000'))
 USE_WEBHOOK = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
 
-print(f"🤖 SALON BOT v2.6 | Mode: {'Webhook' if USE_WEBHOOK else 'Polling'}")
-print(f"🔍 DEBUG: PORT from env = {os.getenv('PORT', 'NOT SET')}")
-print(f"🔍 DEBUG: Using PORT = {PORT}")
+print(f"🤖 BOT v2.7 FINAL | {'Webhook' if USE_WEBHOOK else 'Polling'}")
+print(f"🔍 Port: {PORT}")
+if USE_WEBHOOK:
+    print(f"🔍 Webhook URL: {WEBHOOK_URL}/webhook")
 
 class UserState:
     MAIN_MENU = "main_menu"
@@ -35,12 +32,7 @@ class UserState:
     AWAITING_NAME = "awaiting_name"
     AWAITING_PHONE = "awaiting_phone"
 
-SERVICES = {
-    "nails": {"name": "💅 Ногтевой сервис", "services": ["Маникюр - 1500₽", "Педикюр - 2000₽", "Гель-лак - 1200₽"], "duration": 90},
-    "hair": {"name": "💇‍♀️ Парикмахерские", "services": ["Стрижка - 2500₽", "Окрашивание - 4500₽", "Укладка - 1500₽"], "duration": 120},
-    "makeup": {"name": "💄 Макияж", "services": ["Брови - 8000₽", "Губы - 12000₽", "Веки - 10000₽"], "duration": 150}
-}
-
+SERVICES = {"nails": {"name": "💅 Ногтевой сервис", "services": ["Маникюр - 1500₽", "Педикюр - 2000₽", "Гель-лак - 1200₽"], "duration": 90}, "hair": {"name": "💇‍♀️ Парикмахерские", "services": ["Стрижка - 2500₽", "Окрашивание - 4500₽", "Укладка - 1500₽"], "duration": 120}, "makeup": {"name": "💄 Макияж", "services": ["Брови - 8000₽", "Губы - 12000₽", "Веки - 10000₽"], "duration": 150}}
 MASTERS = {"nails": ["Анна Иванова", "Мария Петрова"], "hair": ["Елена Сидорова", "Ольга Козлова"], "makeup": ["Светлана Николаева"]}
 WORK_HOURS = list(range(9, 19))
 SALON_INFO = {"name": "Салон 'Элеганс'", "phone": "+7 (999) 123-45-67", "address": "ул. Красоты, 10"}
@@ -58,7 +50,7 @@ class Database:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_date ON appointments(appointment_date)')
         conn.commit()
         conn.close()
-        logger.info("✅ DB initialized")
+        logger.info("✅ DB OK")
     
     def is_user_registered(self, user_id: int) -> bool:
         conn = sqlite3.connect(self.db_path)
@@ -74,7 +66,7 @@ class Database:
         cursor.execute('INSERT OR REPLACE INTO users (user_id, name, phone) VALUES (?, ?, ?)', (user_id, name, phone))
         conn.commit()
         conn.close()
-        logger.info(f"👤 Registered user {user_id}")
+        logger.info(f"👤 User {user_id} registered")
     
     def create_appointment(self, user_id: int, service_type: str, master: str, date: str, time: str):
         conn = sqlite3.connect(self.db_path)
@@ -83,7 +75,7 @@ class Database:
         aid = cursor.lastrowid
         conn.commit()
         conn.close()
-        logger.info(f"📅 Created appointment #{aid}")
+        logger.info(f"📅 Appointment #{aid}")
         return aid
     
     def get_user_appointments(self, user_id: int) -> List[Dict]:
@@ -114,7 +106,7 @@ class SalonBot:
         self.app.add_handler(CallbackQueryHandler(self.handle_callback))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_text))
         self.app.add_error_handler(self.error_handler)
-        logger.info("⚙️ Handlers configured")
+        logger.info("⚙️ Handlers OK")
     
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error: {context.error}")
@@ -132,9 +124,9 @@ class SalonBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         user_states[user_id] = UserState.MAIN_MENU
-        logger.info(f"User {user_id} started bot")
+        logger.info(f"User {user_id} started")
         kb = [[InlineKeyboardButton("📅 Записаться", callback_data="book")], [InlineKeyboardButton("📋 Услуги", callback_data="services")], [InlineKeyboardButton("👩‍💻 Мастера", callback_data="masters")], [InlineKeyboardButton("📱 Мои записи", callback_data="my_bookings")]]
-        await update.message.reply_text(f"Добро пожаловать в {SALON_INFO['name']}\n\n📞 {SALON_INFO['phone']}\n📍 {SALON_INFO['address']}", reply_markup=InlineKeyboardMarkup(kb))
+        await update.message.reply_text(f"Добро пожаловать в {SALON_INFO['name']}\n\n{SALON_INFO['phone']}\n{SALON_INFO['address']}", reply_markup=InlineKeyboardMarkup(kb))
     
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         q = update.callback_query
@@ -160,14 +152,14 @@ class SalonBot:
             logger.error(f"Callback error: {e}")
     
     async def show_services(self, q):
-        t = "📋 Услуги и цены\n\n"
+        t = "Услуги и цены\n\n"
         for s in SERVICES.values():
             t += f"{s['name']}\n" + "\n".join(f"• {x}" for x in s['services']) + f"\nДлительность: {s['duration']} мин\n\n"
         t += f"Телефон: {SALON_INFO['phone']}"
         await q.edit_message_text(t, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="back")]]))
     
     async def show_masters(self, q):
-        t = "👩‍💻 Наши мастера\n\n"
+        t = "Наши мастера\n\n"
         for st, ms in MASTERS.items():
             t += f"{SERVICES[st]['name']}:\n" + "\n".join(f"• {m}" for m in ms) + "\n\n"
         await q.edit_message_text(t, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="back")]]))
@@ -175,7 +167,7 @@ class SalonBot:
     async def show_bookings(self, q):
         apps = db.get_user_appointments(q.from_user.id)
         if apps:
-            t = "📱 Ваши записи:\n\n"
+            t = "Ваши записи:\n\n"
             for a in apps:
                 d = datetime.strptime(a['date'], "%Y-%m-%d").strftime("%d.%m.%Y")
                 t += f"• {SERVICES[a['service_type']]['name']}\n{d} в {a['time']}\nМастер: {a['master']}\n\n"
@@ -281,31 +273,25 @@ class SalonBot:
             await uq.message.reply_text(t, reply_markup=InlineKeyboardMarkup(kb))
     
     def run(self):
-        logger.info("🤖 Bot starting...")
+        logger.info("🤖 Starting...")
         if USE_WEBHOOK:
             if not WEBHOOK_URL:
-                logger.error("❌ WEBHOOK_URL not set!")
+                logger.error("❌ No WEBHOOK_URL")
                 sys.exit(1)
-            logger.info(f"🌐 Webhook mode: {WEBHOOK_URL}")
+            logger.info(f"🌐 Webhook: {WEBHOOK_URL}/webhook")
             logger.info(f"🔌 Port: {PORT}")
-            self.app.run_webhook(
-                listen="0.0.0.0",
-                port=PORT,
-                url_path="webhook",
-                webhook_url=f"{WEBHOOK_URL}/webhook"
-            )
+            self.app.run_webhook(listen="0.0.0.0", port=PORT, url_path="webhook", webhook_url=f"{WEBHOOK_URL}/webhook")
         else:
-            logger.info("🔄 Polling mode")
+            logger.info("🔄 Polling")
             self.app.run_polling()
 
 if __name__ == '__main__':
-    logger.info("🚀 STARTING BOT")
+    logger.info("🚀 START")
     try:
         import telegram
         logger.info(f"✅ telegram v{telegram.__version__}")
-    except ImportError:
-        logger.error("No telegram library")
+    except:
+        logger.error("No telegram")
         sys.exit(1)
-    
     bot = SalonBot()
     bot.run()
