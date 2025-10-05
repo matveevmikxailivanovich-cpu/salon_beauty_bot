@@ -21,8 +21,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv('BOT_TOKEN', "8215198856:AAFaeNBZnrKig1tU0VR74DoCTHdrXsRKV1U")
+WEBHOOK_URL = os.getenv('WEBHOOK_URL')
+PORT = int(os.getenv('PORT', 10000))
+USE_WEBHOOK = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
 
-print("🤖 SALON BOT v2.4 - STABLE")
+print(f"🤖 SALON BOT v2.5 | Mode: {'Webhook' if USE_WEBHOOK else 'Polling'}")
 
 class UserState:
     MAIN_MENU = "main_menu"
@@ -277,7 +280,21 @@ class SalonBot:
     
     def run(self):
         logger.info("🤖 Bot starting...")
-        self.app.run_polling()
+        if USE_WEBHOOK:
+            if not WEBHOOK_URL:
+                logger.error("❌ WEBHOOK_URL not set!")
+                sys.exit(1)
+            logger.info(f"🌐 Webhook mode: {WEBHOOK_URL}")
+            logger.info(f"🔌 Port: {PORT}")
+            self.app.run_webhook(
+                listen="0.0.0.0",
+                port=PORT,
+                url_path="",
+                webhook_url=WEBHOOK_URL
+            )
+        else:
+            logger.info("🔄 Polling mode")
+            self.app.run_polling()
 
 if __name__ == '__main__':
     logger.info("🚀 STARTING BOT")
