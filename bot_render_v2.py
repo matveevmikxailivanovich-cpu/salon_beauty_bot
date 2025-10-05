@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv('BOT_TOKEN', "8215198856:AAFaeNBZnrKig1tU0VR74DoCTHdrXsRKV1U")
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
-PORT = int(os.getenv('PORT', 10000))
+PORT = int(os.getenv('PORT', '10000'))
 USE_WEBHOOK = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
 
 print(f"🤖 SALON BOT v2.5 | Mode: {'Webhook' if USE_WEBHOOK else 'Polling'}")
@@ -307,3 +307,4 @@ if __name__ == '__main__':
     
     bot = SalonBot()
     bot.run()
+
