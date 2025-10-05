@@ -25,7 +25,9 @@ WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 PORT = int(os.getenv('PORT', '10000'))
 USE_WEBHOOK = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
 
-print(f"🤖 SALON BOT v2.5 | Mode: {'Webhook' if USE_WEBHOOK else 'Polling'}")
+print(f"🤖 SALON BOT v2.6 | Mode: {'Webhook' if USE_WEBHOOK else 'Polling'}")
+print(f"🔍 DEBUG: PORT from env = {os.getenv('PORT', 'NOT SET')}")
+print(f"🔍 DEBUG: Using PORT = {PORT}")
 
 class UserState:
     MAIN_MENU = "main_menu"
@@ -307,4 +309,3 @@ if __name__ == '__main__':
     
     bot = SalonBot()
     bot.run()
-
