@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 TELEGRAM-БОТ САЛОНА КРАСОТЫ
-Версия для Render
+Исправленная версия для Render
 """
 
 import asyncio
@@ -513,14 +513,8 @@ class SalonBot:
         print("📱 Проверьте в Telegram")
         print("🔄 Для остановки: Ctrl+C")
         
-        # Запуск keep-alive
-        async def start_bot():
-            await asyncio.gather(
-                self.keep_alive_ping(),
-                self.application.run_polling()
-            )
-        
-        asyncio.run(start_bot())
+        # Просто запускаем polling без дополнительных задач
+        self.application.run_polling()
 
 def main():
     try:
