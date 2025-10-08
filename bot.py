@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 TELEGRAM-БОТ САЛОНА КРАСОТЫ
-Версия для развертывания на Render с поддержкой PostgreSQL
+Версия для Render
 """
 
 import asyncio
@@ -10,6 +10,7 @@ import sys
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List
+import sqlite3
 
 # Проверка библиотеки
 try:
@@ -32,27 +33,6 @@ if not BOT_TOKEN:
 
 print("🤖 ЗАПУСК БОТА САЛОНА КРАСОТЫ")
 print("🔑 Токен загружен из переменной окружения")
-
-# Проверка типа БД
-DATABASE_URL = os.getenv('DATABASE_URL')
-USE_POSTGRES = DATABASE_URL is not None
-
-if USE_POSTGRES:
-    # PostgreSQL для Render
-    try:
-        import psycopg2
-        from psycopg2.extras import RealDictCursor
-        print("✅ PostgreSQL будет использоваться")
-        # Render дает URL с postgres://, нужно изменить на postgresql://
-        if DATABASE_URL.startswith('postgres://'):
-            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    except ImportError:
-        print("❌ Установите: pip install psycopg2-binary")
-        sys.exit(1)
-else:
-    # SQLite для локальной разработки
-    import sqlite3
-    print("✅ SQLite будет использоваться (локальная разработка)")
 
 # Состояния
 class UserState:
@@ -96,125 +76,73 @@ SALON_INFO = {
 
 class Database:
     def __init__(self):
-        self.use_postgres = USE_POSTGRES
-        self.database_url = DATABASE_URL
         self.init_db()
         print("💾 База данных готова")
     
-    def get_connection(self):
-        """Получение подключения в зависимости от типа БД"""
-        if self.use_postgres:
-            return psycopg2.connect(self.database_url)
-        else:
-            return sqlite3.connect('salon_bot.db')
-    
     def init_db(self):
-        conn = self.get_connection()
+        conn = sqlite3.connect('salon_bot.db')
         cursor = conn.cursor()
         
-        if self.use_postgres:
-            # PostgreSQL синтаксис
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id BIGINT PRIMARY KEY,
-                    name TEXT,
-                    phone TEXT,
-                    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS appointments (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT,
-                    service_type TEXT,
-                    master TEXT,
-                    appointment_date TEXT,
-                    appointment_time TEXT,
-                    status TEXT DEFAULT 'active',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-        else:
-            # SQLite синтаксис
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER PRIMARY KEY,
-                    name TEXT,
-                    phone TEXT,
-                    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS appointments (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    service_type TEXT,
-                    master TEXT,
-                    appointment_date TEXT,
-                    appointment_time TEXT,
-                    status TEXT DEFAULT 'active',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                name TEXT,
+                phone TEXT,
+                registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                service_type TEXT,
+                master TEXT,
+                appointment_date TEXT,
+                appointment_time TEXT,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         
         conn.commit()
         conn.close()
     
     def is_user_registered(self, user_id: int) -> bool:
-        conn = self.get_connection()
+        conn = sqlite3.connect('salon_bot.db')
         cursor = conn.cursor()
-        cursor.execute('SELECT user_id FROM users WHERE user_id = %s' if self.use_postgres else 'SELECT user_id FROM users WHERE user_id = ?', (user_id,))
+        cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
         result = cursor.fetchone()
         conn.close()
         return result is not None
     
     def register_user(self, user_id: int, name: str, phone: str):
-        conn = self.get_connection()
+        conn = sqlite3.connect('salon_bot.db')
         cursor = conn.cursor()
-        
-        if self.use_postgres:
-            cursor.execute(
-                'INSERT INTO users (user_id, name, phone) VALUES (%s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET name = %s, phone = %s',
-                (user_id, name, phone, name, phone)
-            )
-        else:
-            cursor.execute(
-                'INSERT OR REPLACE INTO users (user_id, name, phone) VALUES (?, ?, ?)',
-                (user_id, name, phone)
-            )
-        
+        cursor.execute(
+            'INSERT OR REPLACE INTO users (user_id, name, phone) VALUES (?, ?, ?)',
+            (user_id, name, phone)
+        )
         conn.commit()
         conn.close()
         print(f"👤 Зарегистрирован: {name}")
     
     def create_appointment(self, user_id: int, service_type: str, master: str, date: str, time: str):
-        conn = self.get_connection()
+        conn = sqlite3.connect('salon_bot.db')
         cursor = conn.cursor()
-        
-        if self.use_postgres:
-            cursor.execute(
-                'INSERT INTO appointments (user_id, service_type, master, appointment_date, appointment_time) VALUES (%s, %s, %s, %s, %s)',
-                (user_id, service_type, master, date, time)
-            )
-        else:
-            cursor.execute(
-                'INSERT INTO appointments (user_id, service_type, master, appointment_date, appointment_time) VALUES (?, ?, ?, ?, ?)',
-                (user_id, service_type, master, date, time)
-            )
-        
+        cursor.execute(
+            'INSERT INTO appointments (user_id, service_type, master, appointment_date, appointment_time) VALUES (?, ?, ?, ?, ?)',
+            (user_id, service_type, master, date, time)
+        )
         conn.commit()
         conn.close()
         print(f"📅 Запись создана: {date} {time}")
     
     def get_user_appointments(self, user_id: int) -> List[Dict]:
-        conn = self.get_connection()
+        conn = sqlite3.connect('salon_bot.db')
         cursor = conn.cursor()
-        
-        placeholder = '%s' if self.use_postgres else '?'
         cursor.execute(
-            f'SELECT service_type, master, appointment_date, appointment_time FROM appointments WHERE user_id = {placeholder} AND status = \'active\'',
+            'SELECT service_type, master, appointment_date, appointment_time FROM appointments WHERE user_id = ? AND status = "active"',
             (user_id,)
         )
         appointments = cursor.fetchall()
@@ -231,20 +159,12 @@ class Database:
         return result
     
     def is_time_available(self, master: str, date: str, time: str) -> bool:
-        conn = self.get_connection()
+        conn = sqlite3.connect('salon_bot.db')
         cursor = conn.cursor()
-        
-        if self.use_postgres:
-            cursor.execute(
-                'SELECT id FROM appointments WHERE master = %s AND appointment_date = %s AND appointment_time = %s AND status = \'active\'',
-                (master, date, time)
-            )
-        else:
-            cursor.execute(
-                'SELECT id FROM appointments WHERE master = ? AND appointment_date = ? AND appointment_time = ? AND status = \'active\'',
-                (master, date, time)
-            )
-        
+        cursor.execute(
+            'SELECT id FROM appointments WHERE master = ? AND appointment_date = ? AND appointment_time = ? AND status = "active"',
+            (master, date, time)
+        )
         result = cursor.fetchone()
         conn.close()
         return result is None
@@ -593,11 +513,14 @@ class SalonBot:
         print("📱 Проверьте в Telegram")
         print("🔄 Для остановки: Ctrl+C")
         
-        # Запуск keep-alive для бесплатного плана Render
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.keep_alive_ping())
+        # Запуск keep-alive
+        async def start_bot():
+            await asyncio.gather(
+                self.keep_alive_ping(),
+                self.application.run_polling()
+            )
         
-        self.application.run_polling()
+        asyncio.run(start_bot())
 
 def main():
     try:
